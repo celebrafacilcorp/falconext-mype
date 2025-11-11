@@ -18,11 +18,14 @@ RUN pnpm install --no-frozen-lockfile
 # Copy source code
 COPY . .
 
+# Debug: Show environment
+RUN echo "=== ENVIRONMENT ===" && printenv | grep VITE
+
 # Build Vite app
 RUN pnpm run build
 
 # Debug: List build output
-RUN echo "=== BUILD OUTPUT ===" && ls -la /app/dist/
+RUN echo "=== BUILD OUTPUT ===" && ls -la /app/dist/ && echo "=== DIST INDEX.HTML ===" && head -10 /app/dist/index.html
 
 # Run stage (Nginx)
 FROM nginx:stable-alpine AS runner
