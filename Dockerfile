@@ -1,14 +1,22 @@
 # Build stage
 FROM node:20-alpine AS builder
 WORKDIR /app
-ENV CI=true
-# Install pnpm and deps
+
+# Install pnpm
 RUN corepack enable && corepack prepare pnpm@9.12.2 --activate
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile || npm ci
+
+# Copy all files (package.json and pnpm-lock.yaml)
+COPY package.json ./
+COPY pnpm-lock.yaml ./
+
+# Install dependencies (use --no-frozen-lockfile for CI compatibility)
+RUN pnpm install --no-frozen-lockfile
+
+# Copy source code
 COPY . .
+
 # Build Vite app
-RUN pnpm run build || npm run build
+RUN pnpm run build
 
 # Run stage (Nginx)
 FROM nginx:stable-alpine AS runner
