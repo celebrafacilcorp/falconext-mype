@@ -40,11 +40,12 @@ COPY --from=builder /app/dist .
 # Debug: Verify copied files
 RUN echo "=== COPIED FILES ===" && ls -la . && echo "=== INDEX.HTML CONTENT ===" && head -5 index.html
 
-# Copy nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx template to enable envsubst of ${PORT}
+RUN mkdir -p /etc/nginx/templates
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
-# Debug: Show nginx config
-RUN echo "=== NGINX CONFIG ===" && cat /etc/nginx/conf.d/default.conf
+# Debug: Show nginx template
+RUN echo "=== NGINX TEMPLATE ===" && cat /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
