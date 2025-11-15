@@ -24,6 +24,8 @@ import { useReactToPrint } from "react-to-print";
 import { usePaymentFlow, PaymentType } from "@/hooks/usePaymentFlow";
 import ModalPaymentUnified from "@/components/ModalPaymentUnified";
 import PaymentReceipt from "@/components/PaymentReceipt";
+import ModalEnviarWhatsApp from "./ModalEnviarWhatsApp";
+import Modal from "@/components/Modal";
 
 const ComprobantesInformales = () => {
     const { auth } = useAuthStore();
@@ -41,7 +43,13 @@ const ComprobantesInformales = () => {
     const [fechaInicio, setFechaInicio] = useState<string>(moment(new Date()).format("YYYY-MM-DD"));
     const [fechaFin, setFechaFin] = useState<string>(moment(new Date()).format("YYYY-MM-DD"));
     const [stateInvoice, setStateInvoice] = useState<string>("TODOS");
+    const [isOpenModalWhatsApp, setIsOpenModalWhatsApp] = useState(false);
+    const [comprobanteWhatsApp, setComprobanteWhatsApp] = useState<any>(null);
     const [comprobante, setComprobante] = useState<string>("");
+    const [openAccionesId, setOpenAccionesId] = useState<number | null>(null);
+    const [isOpenModalPdf, setIsOpenModalPdf] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState<string>("");
+    const [pdfName, setPdfName] = useState<string>("comprobante.pdf");
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const pages = [];
@@ -62,21 +70,110 @@ const ComprobantesInformales = () => {
     console.log(invoices)
 
 
-    const productsTable = invoices?.map((item: IInvoices) => ({
-        id: item?.id,
-        fechaEmisión: moment(item?.fechaEmision).format('DD/MM/YYYY HH:mm:ss'),
-        serie: item.serie,
-        correlativo: item.correlativo,
-        comprobante: item.comprobante,
-        documentoAfiliado: item?.numDocAfectado || item.numeroOrdenTrabajo,
-        document: item?.cliente?.nroDoc,
-        client: item?.cliente?.nombre,
-        total: `S/ ${item.mtoImpVenta.toFixed(2)}`,
-        saldo: `S/ ${item?.saldo?.toFixed(2) || (0).toFixed(2)}`,
-        estado: ["BOLETA", "FACTURA", "NOTA DE CREDITO", "NOTA DE DEBITO"].includes(item.comprobante)
-            ? item.estadoEnvioSunat
-            : item.estadoPago
-    }));
+    const productsTable = invoices?.map((item: IInvoices) => {
+        const rowBase: any = {
+            id: item?.id,
+            fechaEmisión: moment(item?.fechaEmision).format('DD/MM/YYYY HH:mm:ss'),
+            serie: item.serie,
+            correlativo: item.correlativo,
+            comprobante: item.comprobante,
+            documentoAfiliado: item?.numDocAfectado || item.numeroOrdenTrabajo,
+            document: item?.cliente?.nroDoc,
+            client: item?.cliente?.nombre,
+            s3PdfUrl: item?.s3PdfUrl,
+            total: `S/ ${item.mtoImpVenta.toFixed(2)}`,
+            saldo: `S/ ${item?.saldo?.toFixed(2) || (0).toFixed(2)}`,
+            estado: ["BOLETA", "FACTURA", "NOTA DE CREDITO", "NOTA DE DEBITO"].includes(item.comprobante)
+                ? item.estadoEnvioSunat
+                : item.estadoPago,
+        };
+
+        const isOpen = openAccionesId === rowBase.id;
+
+        const handleEnviarWhatsApp = (data: any) => {
+            const comprobanteData = invoices.find((inv: IInvoices) => inv.id === data.id);
+            if (comprobanteData) {
+                setComprobanteWhatsApp({
+                    id: comprobanteData.id,
+                    serie: comprobanteData.serie,
+                    correlativo: comprobanteData.correlativo,
+                    comprobante: comprobanteData.comprobante,
+                    total: comprobanteData.mtoImpVenta,
+                    clienteNombre: comprobanteData.cliente?.nombre || 'Cliente',
+                    clienteCelular: (comprobanteData as any).cliente?.telefono || '',
+                });
+                setIsOpenModalWhatsApp(true);
+            }
+        };
+
+
+        const acciones = (
+            <div
+                className="relative inline-block"
+                onClick={(e) => e.stopPropagation()} // evitar que el click burbujee al documento
+            >
+                <button
+                    type="button"
+                    onClick={() => setOpenAccionesId(isOpen ? null : rowBase.id)}
+                    className="px-2 py-1 text-xs rounded-lg border border-gray-300 bg-white flex items-center gap-1"
+                >
+                    <Icon icon="mdi:dots-vertical" width={18} height={18} />
+                </button>
+                {isOpen && (
+                    <div className="fixed flex-col right-10 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                handleGetReceipt(rowBase);
+                                setOpenAccionesId(null);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+                        >
+                            <Icon icon="mingcute:print-line" width={16} height={16} />
+                            <span>Imprimir</span>
+                        </button>
+                        {/* Botón de impresión térmica - solo se muestra en macOS */}
+                        
+                        <button
+                            type="button"
+                            disabled={!rowBase.s3PdfUrl}
+                            onClick={() => {
+                                if (rowBase.s3PdfUrl) {
+                                    setPdfUrl(rowBase.s3PdfUrl as string);
+                                    const corr = String(rowBase.correlativo || '').padStart(8, '0');
+                                    setPdfName(`${rowBase.serie}-${corr}.pdf`);
+                                    setIsOpenModalPdf(true);
+                                }
+                                setOpenAccionesId(null);
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-100 ${rowBase.s3PdfUrl ? 'text-gray-700' : 'text-gray-400 cursor-not-allowed'}`}
+                        >
+                            <Icon icon="mdi:file-pdf-box" width={16} height={16} />
+                            <span>Ver PDF</span>
+                        </button>
+                        <button
+                            type="button"
+                            disabled={!(rowBase.estado === 'COMPLETADO')}
+                            onClick={() => {
+                                if (rowBase.estado === 'COMPLETADO') {
+                                    handleEnviarWhatsApp(rowBase);
+                                }
+                                setOpenAccionesId(null);
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-100 ${rowBase.estado === 'COMPLETADO' ? 'text-gray-700' : 'text-gray-400 cursor-not-allowed'}`}
+                        >
+                            <Icon icon="mdi:whatsapp" width={16} height={16} />
+                            <span>Enviar WhatsApp</span>
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+        return {
+            ...rowBase,
+            acciones,
+        };
+    });
 
     useEffect(() => {
         resetInvoice();
@@ -111,7 +208,7 @@ const ComprobantesInformales = () => {
         setFormValues(data);
         const saldoPendiente = parseFloat(data?.saldo?.replace('S/ ', '') || '0');
         const totalComprobante = parseFloat(data?.total?.replace('S/ ', '') || '0');
-        
+
         // Usar el hook para iniciar el pago
         await paymentFlow.initiatePayment('PAGO_PARCIAL', {
             id: data.id,
@@ -121,7 +218,7 @@ const ComprobantesInformales = () => {
             mtoImpVenta: totalComprobante,
             saldo: saldoPendiente
         }, saldoPendiente);
-        
+
         setIsOpenModalPagoParcial(true);
     }
 
@@ -133,7 +230,7 @@ const ComprobantesInformales = () => {
             observacion,
             referencia
         };
-        
+
         const comprobante = {
             id: formValues.id,
             serie: formValues.serie,
@@ -156,7 +253,7 @@ const ComprobantesInformales = () => {
                 return await completePay(pagoData, medioPago, monto);
             }
         );
-        
+
         if (result.success) {
             setIsOpenModalPagoParcial(false);
             // El hook ya maneja el showReceipt automáticamente
@@ -165,7 +262,7 @@ const ComprobantesInformales = () => {
 
     const handleCloseReceipt = () => {
         paymentFlow.closeReceipt();
-        
+
         // Recargar tabla
         setTimeout(() => {
             getAllInvoices({
@@ -180,33 +277,7 @@ const ComprobantesInformales = () => {
         }, 300);
     }
 
-    const actions: any = [
-        {
-            onClick: handleGetReceipt,
-            className: "edit",
-            icon: <Icon color="#3BAED9" icon="mingcute:print-line" />,
-            tooltip: "Imprimir"
-        },
-        {
-            onClick: handleCompletePay,
-            className: "complete",
-            icon: <Icon icon="tdesign:money" width="21" height="21" color="#42A5F5" />,
-            tooltip: "Completar Pago",
-            condition: (row: any) => {
-                const saldo = parseFloat(row.saldo.replace('S/ ', '')) || 0;
-                return saldo > 0 && row.estado !== 'ANULADO' && row.estado !== 'COMPLETADO';
-            }
-        },
-        {
-            onClick: handleAnular,
-            className: "anular",
-            icon: <Icon icon="line-md:file-cancel-filled" width="21" height="21" color="#FF8F6B" />,
-            tooltip: "Anular",
-            condition: (row: any) => {
-                return row.estado !== 'ANULADO' && row.estado !== 'COMPLETADO' && !['BOLETA', 'FACTURA', 'NOTA DE CREDITO', 'NOTA DE DEBITO'].includes(row.comprobante);
-            }
-        }
-    ];
+    console.log(productsTable)
 
     useEffect(() => {
         const params: any = {
@@ -344,7 +415,7 @@ const ComprobantesInformales = () => {
                 productsInvoice={invoice?.detalles}
                 total={Number(invoice?.mtoImpVenta).toFixed(2)}
                 mode="off"
-        
+
                 qrCodeDataUrl={qrCodeDataUrl}
                 discount={invoice?.discount}
                 receipt={comprobante || invoice?.comprobante}
@@ -379,8 +450,8 @@ const ComprobantesInformales = () => {
                     {
                         productsTable?.length > 0 ? (
                             <>
-                                <div className="overflow-hidden overflow-x-scroll md:overflow-x-visible">
-                                    <DataTable actions={actions} bodyData={productsTable}
+                                <div className="overflow-x-auto md:overflow-x-visible">
+                                    <DataTable bodyData={productsTable}
                                         headerColumns={[
                                             'Fecha',
                                             'Serie',
@@ -391,7 +462,8 @@ const ComprobantesInformales = () => {
                                             'Cliente',
                                             'Importe',
                                             'Saldo',
-                                            'Estado'
+                                            'Estado',
+                                            'Acciones'
                                         ]} />
                                 </div>
 
@@ -434,6 +506,42 @@ const ComprobantesInformales = () => {
                         error={paymentFlow.error || ''}
                     />
                 )}
+                {isOpenModalWhatsApp && comprobanteWhatsApp && (
+                    <ModalEnviarWhatsApp
+                        isOpen={isOpenModalWhatsApp}
+                        onClose={() => {
+                            setIsOpenModalWhatsApp(false);
+                            setComprobanteWhatsApp(null);
+                        }}
+                        comprobante={comprobanteWhatsApp}
+                    />
+                )}
+                <Modal
+                    isOpenModal={isOpenModalPdf}
+                    closeModal={() => setIsOpenModalPdf(false)}
+                    title="Vista previa del PDF"
+                    width="980px"
+                >
+                    <div className="p-3 space-y-3">
+                        <div className="flex justify-end">
+                            <a
+                                href={pdfUrl || '#'}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-1.5 text-xs rounded-md bg-[#6A6CFF] text-white hover:opacity-90"
+                            >
+                                Descargar
+                            </a>
+                        </div>
+                        <div className="h-[80vh]">
+                            {pdfUrl ? (
+                                <iframe src={pdfUrl} className="w-full h-full rounded-lg border" />
+                            ) : (
+                                <div className="text-center text-gray-500 text-sm">No hay PDF disponible</div>
+                            )}
+                        </div>
+                    </div>
+                </Modal>
                 {paymentFlow.showReceipt && paymentFlow.receiptData && (
                     <PaymentReceipt
                         comprobante={paymentFlow.receiptData.comprobante}

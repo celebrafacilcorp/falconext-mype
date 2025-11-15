@@ -131,6 +131,7 @@ const TableBody: FC<ITableBodyProps> = ({
                                 key === 'id_invoice' ||
                                 key === 'provincia' ||
                                 key === 'distrito' ||
+                                key === 's3PdfUrl'||
                                 key === 'departamento' ||
                                 key === 'xmlSunat' ||
                                 key === 'cdrSunat' ||

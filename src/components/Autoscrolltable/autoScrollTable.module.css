@@ -32,8 +32,7 @@
 
 .tableContainer {
     max-width: 100%; /* Asegurarse de que el contenedor no exceda el ancho disponible */
-    overflow-x: auto; /* Permitir desplazamiento horizontal */
-    overflow-y: hidden; /* Deshabilitar desplazamiento vertical */
+    overflow: visible; /* No recortar contenido; dejar que los dropdowns se superpongan libremente */
     border-radius: 4px;
     white-space: nowrap; /* Evitar que el contenido se envuelva */
 }

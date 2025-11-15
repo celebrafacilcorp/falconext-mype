@@ -115,7 +115,6 @@ const KardexProductos = () => {
             gananciaUnidad: gananciaUnidad > 0 ? `S/ ${gananciaUnidad.toFixed(2)}` : '-',
             stock: item?.stock,
             stockMinimo: item?.stockMinimo ?? 0,
-            stockMaximo: item?.stockMaximo ?? 0,
             unidadMedidaNombre: item?.unidadMedida.nombre,
    
             // Para el modal
@@ -276,7 +275,7 @@ const KardexProductos = () => {
                                             'Producto',
                                             'Categoria',
                                             'Precio Venta',
-                                            'Costo Promedio',
+                                            'Costo',
                                             'Margen',
                                             'Ganancia/Unidad',
                                             'Stock',

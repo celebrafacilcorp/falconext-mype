@@ -23,6 +23,10 @@ import InputPro from "@/components/InputPro";
 import ComprobantePrintPage from "./comprobanteImprimir";
 import { useReactToPrint } from "react-to-print";
 import ModalEnviarWhatsApp from "./ModalEnviarWhatsApp";
+import { usePaymentFlow, PaymentType } from "@/hooks/usePaymentFlow";
+import ModalPaymentUnified from "@/components/ModalPaymentUnified";
+import PaymentReceipt from "@/components/PaymentReceipt";
+import Modal from "@/components/Modal";
 
 const Comprobantes = () => {
     const navigate = useNavigate();
@@ -44,6 +48,12 @@ const Comprobantes = () => {
     const [paymentMethod, setPaymentMethod] = useState<string>("Efectivo");
     const [isOpenModalWhatsApp, setIsOpenModalWhatsApp] = useState(false);
     const [comprobanteWhatsApp, setComprobanteWhatsApp] = useState<any>(null);
+    const [openAccionesId, setOpenAccionesId] = useState<number | null>(null);
+    const paymentFlow = usePaymentFlow();
+    const [isOpenModalPagoParcial, setIsOpenModalPagoParcial] = useState(false);
+    const [isOpenModalPdf, setIsOpenModalPdf] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState<string>("");
+    const [pdfName, setPdfName] = useState<string>("comprobante.pdf");
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -62,31 +72,142 @@ const Comprobantes = () => {
         }
     }, [success]);
 
+    // Cerrar menú de acciones al hacer click fuera
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (openAccionesId !== null) {
+                setOpenAccionesId(null);
+            }
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [openAccionesId]);
+
     console.log(invoices)
 
 
-    const productsTable = invoices?.map((item: IInvoices) => ({
-        id: item?.id,
-        fechaEmisión: moment(item?.fechaEmision).format('DD/MM/YYYY HH:mm:ss'),
-        serie: item.serie,
-        correlativo: item.correlativo,
-        comprobante: item.comprobante,
-        documentoAfiliado: item?.numDocAfectado,
-        document: item?.cliente?.nroDoc,
-        client: item?.cliente?.nombre,
-        total: `S/ ${item.mtoImpVenta.toFixed(2)}`,
-        estado: ["BOLETA", "FACTURA", "NOTA DE CREDITO", "NOTA DE DEBITO"].includes(item.comprobante)
-            ? item.estadoEnvioSunat
-            : item.estadoPago,
-        xmlSunat: item.sunatXml,
-        cdrSunat: item.sunatCdrZip
-    }));
+    const productsTable = invoices?.map((item: IInvoices) => {
+        const rowBase: any = {
+            id: item?.id,
+            fechaEmisión: moment(item?.fechaEmision).format('DD/MM/YYYY HH:mm:ss'),
+            serie: item.serie,
+            correlativo: item.correlativo,
+            comprobante: item.comprobante,
+            documentoAfiliado: item?.numDocAfectado,
+            document: item?.cliente?.nroDoc,
+            s3PdfUrl: item?.s3PdfUrl,
+            client: item?.cliente?.nombre,
+            total: `S/ ${item.mtoImpVenta.toFixed(2)}`,
+            estado: ["BOLETA", "FACTURA", "NOTA DE CREDITO", "NOTA DE DEBITO"].includes(item.comprobante)
+                ? item.estadoEnvioSunat
+                : item.estadoPago,
+            xmlSunat: item.sunatXml,
+            cdrSunat: item.sunatCdrZip,
+        };
 
-    const handleInvoiceState = async (data: any) => {
-        console.log(data);
-        setFormValues(data);
-        // setIsOpenModalConfirm(true);
-    };
+        const canEmitirSunat = ["BOLETA", "FACTURA", "NOTA DE CREDITO", "NOTA DE DEBITO"].includes(rowBase.comprobante);
+
+        const isOpen = openAccionesId === rowBase.id;
+
+        const acciones = (
+            <div
+                className="relative inline-block"
+                onClick={(e) => e.stopPropagation()} // evitar que el click burbujee al documento
+            >
+                <button
+                    type="button"
+                    onClick={() => setOpenAccionesId(isOpen ? null : rowBase.id)}
+                    className="px-2 py-1 text-xs rounded-lg border border-gray-300 bg-white flex items-center gap-1"
+                >
+                    <Icon icon="mdi:dots-vertical" width={18} height={18} />
+                </button>
+                {isOpen && (
+                    <div className="fixed flex-col right-10 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                handleGetReceipt(rowBase);
+                                setOpenAccionesId(null);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+                        >
+                            <Icon icon="mingcute:print-line" width={16} height={16} />
+                            <span>Imprimir</span>
+                        </button>
+                        {/* Botón de impresión térmica - solo se muestra en macOS */}
+                        <button
+                            type="button"
+                            disabled={!rowBase.s3PdfUrl}
+                            onClick={() => {
+                                if (rowBase.s3PdfUrl) {
+                                    setPdfUrl(rowBase.s3PdfUrl as string);
+                                    const corr = String(rowBase.correlativo || '').padStart(8, '0');
+                                    setPdfName(`${rowBase.serie}-${corr}.pdf`);
+                                    setIsOpenModalPdf(true);
+                                }
+                                setOpenAccionesId(null);
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-100 ${rowBase.s3PdfUrl ? 'text-gray-700' : 'text-gray-400 cursor-not-allowed'}`}
+                        >
+                            <Icon icon="mdi:file-pdf-box" width={16} height={16} />
+                            <span>Ver PDF</span>
+                        </button>
+                        <button
+                            type="button"
+                            disabled={!rowBase.xmlSunat}
+                            onClick={() => {
+                                if (rowBase.xmlSunat) {
+                                    window.open(rowBase.xmlSunat, '_blank');
+                                }
+                                setOpenAccionesId(null);
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-100 ${rowBase.xmlSunat ? 'text-gray-700' : 'text-gray-400 cursor-not-allowed'}`}
+                        >
+                            <Icon icon="hugeicons:xml-02" width={16} height={16} />
+                            <span>Descargar XML</span>
+                        </button>
+                        <button
+                            type="button"
+                            disabled={!rowBase.cdrSunat}
+                            onClick={() => {
+                                if (rowBase.cdrSunat) {
+                                    window.open(rowBase.cdrSunat, '_blank');
+                                }
+                                setOpenAccionesId(null);
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-100 ${rowBase.cdrSunat ? 'text-gray-700' : 'text-gray-400 cursor-not-allowed'}`}
+                        >
+                            <Icon icon="mdi:zip-box-outline" width={16} height={16} />
+                            <span>Descargar CDR</span>
+                        </button>
+                        <button
+                            type="button"
+                            disabled={!(rowBase.estado === 'EMITIDO' || !canEmitirSunat)}
+                            onClick={() => {
+                                if (rowBase.estado === 'EMITIDO' || !canEmitirSunat) {
+                                    handleEnviarWhatsApp(rowBase);
+                                }
+                                setOpenAccionesId(null);
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-100 ${rowBase.estado === 'EMITIDO' || !canEmitirSunat ? 'text-gray-700' : 'text-gray-400 cursor-not-allowed'}`}
+                        >
+                            <Icon icon="mdi:whatsapp" width={16} height={16} />
+                            <span>Enviar WhatsApp</span>
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+
+        return {
+            ...rowBase,
+            acciones,
+        };
+    });
+
 
     const handleGetReceipt = async (data: any) => {
         console.log(data);
@@ -110,68 +231,81 @@ const Comprobantes = () => {
         }
     };
 
-    const actions: any = [
-        {
-            onClick: handleGetReceipt,
-            className: "edit",
-            icon: <Icon color="#3BAED9" icon="mingcute:print-line" />,
-            tooltip: "Imprimir"
-        },
-        {
-            onClick: handleInvoiceState,
-            className: "delete",
-            icon: (row: any) => {
-                switch (row.estado) {
-                    case 'EMITIDO':
-                        return <Icon icon="gg:check-o" color="#1CBC9C" />; // Aprobado
-                    case 'RECHAZADO':
-                        return <Icon icon="tabler:alert-circle" color="#f87171" />; // Rechazado
-                    case 'PENDIENTE':
-                        return <Icon icon="mdi:clock-outline" color="#facc15" />; // Pendiente
-                    default:
-                        return <Icon icon="ic:round-help-outline" color="#a1a1aa" />; // Desconocido
-                }
-            },
-            tooltip: (row: any) => {
-                switch (row.estado) {
-                    case 'EMITIDO':
-                        return 'Aprobado por SUNAT';
-                    case 'RECHAZADO':
-                        return 'Rechazado por SUNAT';
-                    case 'PENDIENTE':
-                        return 'En proceso';
-                    case 'ANULADO':
-                        return 'ANULADO por SUNAT';
-                    default:
-                        return 'Estado desconocido';
-                }
-            },
-            condition: (row: any) => ["BOLETA", "FACTURA", "NOTA DE CREDITO", "NOTA DE DEBITO"].includes(row.comprobante)
-        },
-        {
-            onClick: (row: any) => window.open(row.xmlSunat, '_blank'),
-            className: "xml",
-            icon: <Icon icon="hugeicons:xml-02" color="#6A6CFF" width="20" height="20" />, // púrpura
-            tooltip: "Descargar XML",
-            condition: (row: any) => !!row.xmlSunat
-        },
-        {
-            onClick: (row: any) => window.open(row.cdrSunat, '_blank'),
-            className: "cdr",
-            icon: <Icon icon="mdi:zip-box-outline" color="#8B795F" />, // verde
-            tooltip: "Descargar CDR",
-            condition: (row: any) => !!row.cdrSunat
-        },
-        {
-            onClick: handleEnviarWhatsApp,
-            className: "whatsapp",
-            icon: <Icon icon="mdi:whatsapp" color="#25D366" width="20" height="20" />,
-            tooltip: "Enviar por WhatsApp",
-            condition: (row: any) => row.estado === 'EMITIDO' || !["BOLETA", "FACTURA", "NOTA DE CREDITO", "NOTA DE DEBITO"].includes(row.comprobante)
-        },
-    ];
+    // Inicio de flujo de pago parcial (unificado)
+    const handlePartialPayment = async (data: any) => {
+        // Guardamos datos mínimos del row para el modal
+        setFormValues(data);
+        const comprobanteData = invoices.find((inv: IInvoices) => inv.id === data.id);
+        if (!comprobanteData) return;
+        const totalComprobante = comprobanteData.mtoImpVenta || 0;
+        const saldoPendiente = (comprobanteData as any).saldo ?? totalComprobante; // si no hay saldo, asumir total
 
-    console.log(actions)
+        await paymentFlow.initiatePayment('PAGO_PARCIAL', {
+            id: comprobanteData.id,
+            serie: comprobanteData.serie,
+            correlativo: comprobanteData.correlativo,
+            cliente: { nombre: comprobanteData.cliente?.nombre || 'Cliente' },
+            mtoImpVenta: totalComprobante,
+            saldo: saldoPendiente,
+        }, saldoPendiente);
+        setIsOpenModalPagoParcial(true);
+    };
+
+    const handleConfirmPago = async (monto: number, medioPago: string, observacion?: string, referencia?: string) => {
+        const payment = {
+            tipo: 'PAGO_PARCIAL' as PaymentType,
+            monto,
+            medioPago: medioPago as any,
+            observacion,
+            referencia,
+        };
+
+        // Tomamos datos del comprobante desde formValues (seleccionado del row)
+        const pagoData: any = {
+            id: formValues.id,
+            serie: formValues.serie,
+            correlativo: formValues.correlativo,
+            client: formValues.client,
+        };
+
+        const result = await paymentFlow.processPayment(
+            payment,
+            {
+                id: formValues.id,
+                serie: formValues.serie,
+                correlativo: formValues.correlativo,
+                cliente: { nombre: formValues.client },
+                mtoImpVenta: parseFloat((formValues?.total || '').toString().replace('S/ ', '') || '0'),
+                saldo: parseFloat((formValues?.saldo || '').toString().replace('S/ ', '') || '0') || undefined,
+            },
+            async (_comprobante: any, _medioPago: string, _monto: number, _observacion?: string, _referencia?: string) => {
+                // Reutiliza completePay del store (acepta monto opcional)
+                return await completePay(pagoData, medioPago, monto);
+            }
+        );
+
+        if (result.success) {
+            setIsOpenModalPagoParcial(false);
+            // refrescar tabla luego de cerrar recibo
+            setTimeout(() => {
+                getAllInvoices({
+                    tipoComprobante: "FORMAL",
+                    page: currentPage,
+                    limit: itemsPerPage,
+                    search: debounce,
+                    fechaInicio: fechaInicio,
+                    fechaFin: fechaFin,
+                    estado: stateInvoice === "TODOS" ? "" : stateInvoice
+                });
+            }, 300);
+        }
+    };
+
+    const handleCloseReceipt = () => {
+        paymentFlow.closeReceipt();
+    };
+
+    console.log(productsTable)
     console.log(fechaFin)
 
     useEffect(() => {
@@ -370,8 +504,8 @@ const Comprobantes = () => {
                     {
                         productsTable?.length > 0 ? (
                             <>
-                                <div className="overflow-hidden overflow-x-scroll md:overflow-x-visible">
-                                    <DataTable actions={actions} bodyData={productsTable}
+                                <div className="overflow-x-auto md:overflow-x-visible overflow-y-auto">
+                                    <DataTable bodyData={productsTable}
                                         headerColumns={[
                                             'Fecha',
                                             'Serie',
@@ -381,7 +515,8 @@ const Comprobantes = () => {
                                             'Num doc',
                                             'Cliente',
                                             'Importe',
-                                            'Estado'
+                                            'Estado',
+                                            'Acciones'
                                         ]} />
                                 </div>
                                 <Pagination
@@ -431,6 +566,69 @@ const Comprobantes = () => {
                             setComprobanteWhatsApp(null);
                         }}
                         comprobante={comprobanteWhatsApp}
+                    />
+                )}
+                <Modal
+                    isOpenModal={isOpenModalPdf}
+                    closeModal={() => setIsOpenModalPdf(false)}
+                    title="Vista previa del PDF"
+                    width="980px"
+                >
+                    <div className="p-3 space-y-3">
+                        <div className="flex justify-end">
+                            <a
+                                href={pdfUrl || '#'}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-1.5 text-xs rounded-md bg-[#6A6CFF] text-white hover:opacity-90"
+                            >
+                                Descargar
+                            </a>
+                        </div>
+                        <div className="h-[80vh]">
+                            {pdfUrl ? (
+                                <iframe src={pdfUrl} className="w-full h-full rounded-lg border" />
+                            ) : (
+                                <div className="text-center text-gray-500 text-sm">No hay PDF disponible</div>
+                            )}
+                        </div>
+                    </div>
+                </Modal>
+                {(isOpenModalPagoParcial && paymentFlow.payment) && (
+                    <ModalPaymentUnified
+                        isOpen={isOpenModalPagoParcial}
+                        isLoading={paymentFlow.isLoading}
+                        paymentType={paymentFlow.payment.tipo}
+                        saldoPendiente={parseFloat((formValues?.saldo || '').toString().replace('S/ ', '') || '0') || parseFloat((formValues?.total || '').toString().replace('S/ ', '') || '0')}
+                        totalComprobante={parseFloat((formValues?.total || '').toString().replace('S/ ', '') || '0')}
+                        comprobanteInfo={{
+                            id: formValues.id,
+                            serie: formValues.serie,
+                            correlativo: formValues.correlativo,
+                            cliente: formValues.client,
+                            total: parseFloat((formValues?.total || '').toString().replace('S/ ', '') || '0')
+                        }}
+                        onConfirm={handleConfirmPago}
+                        onCancel={() => {
+                            setIsOpenModalPagoParcial(false);
+                            paymentFlow.reset();
+                        }}
+                        error={paymentFlow.error || ''}
+                    />
+                )}
+                {paymentFlow.showReceipt && paymentFlow.receiptData && (
+                    <PaymentReceipt
+                        comprobante={paymentFlow.receiptData.comprobante}
+                        saldo={formValues?.saldo}
+                        payment={paymentFlow.receiptData.payment}
+                        numeroRecibo={paymentFlow.receiptData.numeroRecibo}
+                        nuevoSaldo={paymentFlow.receiptData.nuevoSaldo}
+                        detalles={paymentFlow.receiptData.detalles}
+                        cliente={paymentFlow.receiptData.cliente}
+                        pagosHistorial={paymentFlow.receiptData.pagosHistorial}
+                        totalPagado={paymentFlow.receiptData.totalPagado}
+                        company={auth}
+                        onClose={handleCloseReceipt}
                     />
                 )}
             </div>

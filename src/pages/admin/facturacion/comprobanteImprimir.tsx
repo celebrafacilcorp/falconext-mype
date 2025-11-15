@@ -31,7 +31,7 @@ const ComprobantePrintPage = ({
 
     const round2 = (n: any) => parseFloat(n?.toFixed(2)) || 0;
 
-    console.log(productsInvoice)
+    console.log(formValues)
     console.log(company)
     const rawBase64 = company?.empresa?.logo;
     // Detecta MIME si no viene con prefijo
@@ -52,7 +52,7 @@ const ComprobantePrintPage = ({
 
     return (
         <div className='hidden h-full bg-[#fff]'>
-            <div ref={componentRef || localComponentRef} className="px-5 bg-[#fff] py-0 text-sm">
+            <div ref={componentRef || localComponentRef} className="px-5 bg-[#fff] py-0 text-sm pt-10 pb-10" style={{ fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif' }}>
                 {size === 'TICKET' ? (
                     <div className="">
                         {logoDataUrl && <img src={logoDataUrl} alt="logo" className="mx-auto w-[80px] h-[80px] mb-3" />}
@@ -94,11 +94,10 @@ const ComprobantePrintPage = ({
                         <label className="text-xs flex justify-between"><div className="">I.G.V 18.00 %:</div> <div>{Number(totalReceipt * 0.18).toFixed(2)}</div></label>
                         <label className="text-xs flex justify-between"><div className="">IMPORTE TOTAL:</div> <div>{Number(totalReceipt).toFixed(2)}</div></label>
                         <hr className="my-1 border-dashed border-[#222]" />
-                        <p className="text-xs"><span className="">MEDIO DE PAGO: </span>TARJETA</p>
-                        <p className="text-xs"><span className="">VUELTO: </span> S/ 0.00</p>
-                        <p className="text-xs"><span className="">TIPO DE PAGO: </span>CONTADO</p>
+                        <p className="text-xs"><span className="">MEDIO DE PAGO: </span>{formValues?.medioPago?.toUpperCase()}</p>
+                        <p className="text-xs"><span className="">VUELTO: </span> S/ {formValues?.vuelto?.toFixed(2) || (0).toFixed(2)}</p>
                         <p className="text-xs"><span className="">PAGADO: </span>S/ {Number(totalPrices).toFixed(2)}</p>
-                        <p className="text-xs"><span className="">VENDEDOR: </span>DIEGO ORTEGA</p>
+                        <p className="text-xs"><span className="">VENDEDOR: </span>{formValues?.vendedor?.toUpperCase()}</p>
                         <hr className="my-1 border-dashed border-[#222]" />
                         <p className="text-xs"><span className="">OBSERVACIONES : </span>{observation?.toUpperCase() || ''}</p>
                         <div className="">
@@ -163,7 +162,7 @@ const ComprobantePrintPage = ({
                                 <p className="text-xs"><span className="font-bold">IMPORTE TOTAL:</span> S/ {round2(Number(total)).toFixed(2)}</p>
                             </div>
                         </div>
-                        <div className="border border-black p-2 mt-2 relative">
+                        <div className="border border-black p-2 mt-2 relative mb-10">
                             <p className="text-xs"><span className="font-bold">OBSERVACIONES:</span><br />{observation?.toUpperCase() || ''}<br />Representación impresa del Comprobante de Pago Electrónico.<br />Autorizado mediante Resolución de Intendencia N° 080-005-000153/SUNAT.<br />Emite a través de APISPERU - Proveedor Autorizado por SUNAT.</p>
                             {qrCodeDataUrl && <img src={qrCodeDataUrl} alt="QR" className="absolute bottom-2 right-2 w-12 h-12" />}
                         </div>

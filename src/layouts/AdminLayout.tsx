@@ -19,6 +19,35 @@ export default function AdminLayout() {
   const [isKardexSubmenuOpen, setIsKardexSubmenuOpen] = useState(false)
   const [isCajaSubmenuOpen, setIsCajaSubmenuOpen] = useState(false)
 
+  // Cerrar todos los acordeones
+  const closeAllAccordions = () => {
+    setIsFactSubmenuOpen(false)
+    setIsContSubmenuOpen(false)
+    setIsKardexSubmenuOpen(false)
+    setIsCajaSubmenuOpen(false)
+  }
+
+  // Alternar acordeón exclusivo
+  const toggleAccordion = (key: 'fact' | 'cont' | 'kardex' | 'caja') => {
+    if (key === 'fact') {
+      const next = !isFactSubmenuOpen
+      closeAllAccordions()
+      setIsFactSubmenuOpen(next)
+    } else if (key === 'cont') {
+      const next = !isContSubmenuOpen
+      closeAllAccordions()
+      setIsContSubmenuOpen(next)
+    } else if (key === 'kardex') {
+      const next = !isKardexSubmenuOpen
+      closeAllAccordions()
+      setIsKardexSubmenuOpen(next)
+    } else if (key === 'caja') {
+      const next = !isCajaSubmenuOpen
+      closeAllAccordions()
+      setIsCajaSubmenuOpen(next)
+    }
+  }
+
   useEffect(() => {
     if (location.pathname === '/administrador') setNameNavbar('Administrador')
     else if (location.pathname.startsWith('/administrador/')) {
@@ -49,7 +78,7 @@ export default function AdminLayout() {
   return (
     <div className="relative h-screen overflow-x-hidden md:overflow-auto">
       <Alert />
-      <aside className={`bg-white  p-5 space-y-4 fixed w-[260px] h-full ${isSidebarOpen ? 'z-1 w-full md:w-[260px] transition-all duration-300' : 'z-1 ml-[-260px] md:ml-0 transition-all duration-300'}`}>
+      <aside className={`bg-white p-5 space-y-4 fixed w-[260px] h-full overflow-y-auto ${isSidebarOpen ? 'z-1 w-full md:w-[260px] transition-all duration-300' : 'z-1 ml-[-260px] md:ml-0 transition-all duration-300'}`}>
         <h2 className="text-xl mb-10 font-bold flex items-center text-[#4d4d4d] ml-4.5">
           <img width={30} src="/logonephi.png" className="mr-2 ml-4 rounded-xl" alt="logo" />
           NEPHI
@@ -72,7 +101,7 @@ export default function AdminLayout() {
               {/* Kardex */}
               {hasPermission(auth, 'kardex') && (
                 <div>
-                  <button onClick={() => { setIsSidebarOpen(false); setIsKardexSubmenuOpen(!isKardexSubmenuOpen); setNameNavbar('Kardex') }} className={location.pathname.includes('/administrador/kardex') ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl w-full text-left' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d] w-full text-left'}>
+                  <button onClick={() => { setIsSidebarOpen(false); toggleAccordion('kardex'); setNameNavbar('Kardex') }} className={location.pathname.includes('/administrador/kardex') ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl w-full text-left' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d] w-full text-left'}>
                     <Icon icon="basil:book-open-outline" className="mr-2" width="24" height="24" /> Kardex
                     <Icon icon={isKardexSubmenuOpen ? 'basil:caret-up-outline' : 'mdi:chevron-down'} className="ml-auto" width="20" />
                   </button>
@@ -105,7 +134,7 @@ export default function AdminLayout() {
                   {/* Facturación SUNAT - Solo para empresas formales */}
                   {auth?.empresa?.tipoEmpresa === 'FORMAL' && (
                     <div>
-                      <button onClick={() => { setIsSidebarOpen(false); setIsFactSubmenuOpen(!isFactSubmenuOpen); setNameNavbar('Facturacion') }} className={location.pathname.includes('/administrador/facturacion') ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl w-full text-left' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d] w-full text-left'}>
+                      <button onClick={() => { setIsSidebarOpen(false); toggleAccordion('fact'); setNameNavbar('Facturacion') }} className={location.pathname.includes('/administrador/facturacion') ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl w-full text-left' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d] w-full text-left'}>
                         <Icon icon="basil:file-outline" className="mr-2" width="24" height="24" /> Fact. SUNAT
                         <Icon icon={isFactSubmenuOpen ? 'basil:caret-up-outline' : 'basil:caret-down-solid'} className="ml-auto" width="20" />
                       </button>
@@ -123,20 +152,24 @@ export default function AdminLayout() {
                   )}
 
                   {/* Comprobantes informales - Para empresas informales */}
-                  {auth?.empresa?.tipoEmpresa === 'INFORMAL' && (
+                  {(auth?.empresa?.tipoEmpresa === 'FORMAL' || auth?.empresa?.tipoEmpresa === 'INFORMAL') && (
                     <div>
-                      <button onClick={() => { setIsSidebarOpen(false); setIsFactSubmenuOpen(!isFactSubmenuOpen); setNameNavbar('Comprobantes Informales') }} className={location.pathname.includes('/administrador/facturacion/comprobantes-informales') ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl w-full text-left' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d] w-full text-left'}>
+                      <button onClick={() => { setIsSidebarOpen(false); toggleAccordion('fact'); setNameNavbar('Comprobantes Informales') }} className={location.pathname.includes('/administrador/facturacion/comprobantes-informales') ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl w-full text-left' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d] w-full text-left'}>
                         <Icon icon="raphael:paper" className="mr-2" width="24" height="24" /> Notas de Pedido
                         <Icon icon={isFactSubmenuOpen ? 'basil:caret-up-outline' : 'basil:caret-down-solid'} className="ml-auto" width="20" />
                       </button>
                       {isFactSubmenuOpen && (
                         <div className="ml-8 space-y-2 mt-2">
                           <NavLink to="/administrador/facturacion/comprobantes-informales" className={({ isActive }) => isActive ? 'flex bg-[#f0f0f5] px-4 py-2 text-[14px] text-[#474747] rounded-xl' : 'text-[14px] flex px-4 py-2 rounded-xl text-[#4d4d4d]'}>
-                            Notas de Pedido
+                            Notas de ventas
                           </NavLink>
-                          <NavLink to="/administrador/facturacion/nuevo" className={({ isActive }) => isActive ? 'flex bg-[#f0f0f5] px-4 py-2 text-[14px] text-[#474747] rounded-xl' : 'text-[14px] flex px-4 py-2 rounded-xl text-[#4d4d4d]'}>
-                            Crear comprobantes
-                          </NavLink>
+                          {
+                            auth?.empresa?.tipoEmpresa === 'INFORMAL' && (
+                              <NavLink to="/administrador/facturacion/nuevo" className={({ isActive }) => isActive ? 'flex bg-[#f0f0f5] px-4 py-2 text-[14px] text-[#474747] rounded-xl' : 'text-[14px] flex px-4 py-2 rounded-xl text-[#4d4d4d]'}>
+                                Crear comprobantes
+                              </NavLink>
+                            )
+                          }
                         </div>
                       )}
                     </div>
@@ -153,7 +186,7 @@ export default function AdminLayout() {
               {/* Reportes/Contabilidad */}
               {hasPermission(auth, 'reportes') && (
                 <div>
-                  <button onClick={() => { setIsSidebarOpen(false); setIsContSubmenuOpen(!isContSubmenuOpen); setNameNavbar('Contabilidad') }} className={location.pathname.includes('/administrador/contabilidad') ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl w-full text-left' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d] w-full text-left'}>
+                  <button onClick={() => { setIsSidebarOpen(false); toggleAccordion('cont'); setNameNavbar('Contabilidad') }} className={location.pathname.includes('/administrador/contabilidad') ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl w-full text-left' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d] w-full text-left'}>
                     <Icon icon="solar:calculator-linear" className="mr-2" width="24" height="24" /> Contabilidad
                     <Icon icon={isContSubmenuOpen ? 'basil:caret-up-outline' : 'basil:caret-down-solid'} className="ml-auto" width="20" />
                   </button>
@@ -177,7 +210,7 @@ export default function AdminLayout() {
               {/* Caja - visible si tiene permiso 'caja' */}
               {hasPermission(auth, 'caja') && (
                 <div>
-                  <button onClick={() => { setIsSidebarOpen(false); setIsCajaSubmenuOpen(!isCajaSubmenuOpen); setNameNavbar('Caja') }} className={location.pathname.includes('/administrador/caja') ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl w-full text-left' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d] w-full text-left'}>
+                  <button onClick={() => { setIsSidebarOpen(false); toggleAccordion('caja'); setNameNavbar('Caja') }} className={location.pathname.includes('/administrador/caja') ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl w-full text-left' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d] w-full text-left'}>
                     <Icon icon="hugeicons:atm-01" className="mr-2" width="24" height="24" /> Caja
                     <Icon icon={isCajaSubmenuOpen ? 'basil:caret-up-outline' : 'basil:caret-down-solid'} className="ml-auto" width="20" />
                   </button>

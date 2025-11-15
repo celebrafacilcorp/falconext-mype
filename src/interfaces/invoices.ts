@@ -20,6 +20,7 @@ export type IInvoices = {
   mtoOperGravadas: number
   mtoIGV: number
   mtoOperInafectas: number
+  s3PdfUrl: string
   valorVenta: number
   totalImpuestos: number
   subTotal: number
@@ -74,6 +75,7 @@ export interface IFormInvoice {
   comprobante: string
   tipoDoc: string
   relatedInvoiceId: string
+  vuelto: number,
   clienteNombre: string
   medioPago: string
   discount: number

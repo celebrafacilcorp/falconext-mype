@@ -63,6 +63,7 @@ const Invoice = () => {
         discount: 0,
         motivo: "",
         relatedInvoiceId: "",
+        vuelto: 0,
         tipDocAfectado: "",
         motivoId: 0,
         medioPago: "",
@@ -182,7 +183,7 @@ const Invoice = () => {
     }
 
     const navigate = useNavigate();
-    const [printSize, setPrintSize] = useState("A4");
+    const [printSize, setPrintSize] = useState("TICKET");
 
     const handleChangePrint = (_idValue: any, value: any, _name: any, _id: any) => {
         setPrintSize(value)
@@ -314,6 +315,14 @@ const Invoice = () => {
 
     const totalInWords = numberToWords(parseFloat(totalAdjusted.toFixed(2))) + " SOLES";
 
+    // Mantener sincronizado el campo 'vuelto' que se envía al backend
+    useEffect(() => {
+        setFormValues((prev) => ({
+            ...prev,
+            vuelto: totalAdjusted <= pay ? Number(Math.abs(totalAdjusted - pay).toFixed(2)) : 0,
+        }));
+    }, [pay, totalAdjusted]);
+
     const addInvoiceReceipt = async () => {
         if (!validateForm()) {
             return;
@@ -355,6 +364,7 @@ const Invoice = () => {
             tipoOperacionId: 1,
             fechaEmision,
             medioPago: paymentMethod,
+            vuelto: formValues?.vuelto,
             clienteId: Number(formValues?.clienteId) || invoiceData?.cliente?.id,
             clienteName: selectedClient?.nombre,
             tipoDoc: formValues?.tipoDoc,
@@ -442,7 +452,13 @@ const Invoice = () => {
         [{ id: "01", value: "FACTURA" },
         { id: "03", value: "BOLETA" },
         { id: "07", value: "NOTA DE CREDITO" },
-        { id: "08", value: "NOTA DE DEBITO" }
+        { id: "08", value: "NOTA DE DEBITO" },
+        { id: "TICKET", value: "TICKET" },
+        { id: "OT", value: "ORDEN DE TRABAJO" },
+        { id: "NV", value: "NOTA DE VENTA" },
+        { id: "NP", value: "NOTA DE PEDIDO" },
+        { id: "CP", value: "COMPROBANTE DE PAGO" },
+        { id: "RH", value: "RECIBO POR HONORARIO" }
         ]
 
     const tiposComprobantesInformales =
@@ -575,15 +591,6 @@ const Invoice = () => {
         }
     }, [formValues.motivoId])
 
-    const [loading, setLoading] = useState(false);
-    async function generarQR(texto: string): Promise<string> {
-        return QRCode.toDataURL(texto, { width: 200, margin: 1 });
-    }
-
-    const handleOpenPdf = async () => {
-        setLoading(true);
-    };
-
     // Create Document Component
 
     const ruc = "204812192919";
@@ -660,14 +667,40 @@ const Invoice = () => {
 
     const closeModalResponse = () => {
         setIsOpenModalSuccessInvoice(false);
+        // Reiniciar valores del formulario y pagos
         setFormValues({
             ...initFormValues,
             comprobante: formValues?.comprobante,
-            tipoDoc: formValues.tipoDoc
+            tipoDoc: formValues.tipoDoc,
+            vuelto: 0,
         });
+        setPay(0);
+        setChange(0);
+        setPaymentMethod('Efectivo');
         resetInvoice();
         resetProductInvoice();
-        setSelectedClient(null); // Limpiar el cliente seleccionado
+        // Si es BOLETA, establecer por defecto CLIENTES VARIOS inmediatamente
+        if (formValues?.comprobante === "BOLETA") {
+            const clientSelect: any = clients?.find((item: any) => "10000000" === item.nroDoc);
+            if (clientSelect === undefined) {
+                setSelectedClient({
+                    nroDoc: "10000000",
+                    nombre: "CLIENTES VARIOS",
+                });
+                setFormValues((prev) => ({
+                    ...prev,
+                    clienteNombre: "CLIENTES VARIOS",
+                }));
+            } else {
+                setSelectedClient(clientSelect);
+                setFormValues((prev) => ({
+                    ...prev,
+                    clienteNombre: clientSelect?.nombre || "CLIENTES VARIOS",
+                }));
+            }
+        } else {
+            setSelectedClient(null); // Limpiar el cliente seleccionado
+        }
         setSelectProduct(null);  // Limpiar el producto seleccionado
         setSerie("");           // Limpiar la serie
         setCorrelative("");
@@ -743,7 +776,7 @@ const Invoice = () => {
                     <Select disabled defaultValue={"SOLES"} error={""} isSearch options={monedas} id="currencyId" name="currencyCode" value="" onChange={handleChangeSelect} icon="clarity:box-plot-line" isIcon label="Moneda" />
                 </div>
                 <div className="md:col-start-5 md:col-end-7 col-span-12">
-                    <Select defaultValue={"A4"} error={""} isSearch options={impresion} id="printId" name="print" value="" onChange={handleChangePrint} icon="clarity:box-plot-line" isIcon label="Impresion" />
+                    <Select defaultValue={"TICKET"} error={""} isSearch options={impresion} id="printId" name="print" value="" onChange={handleChangePrint} icon="clarity:box-plot-line" isIcon label="Impresion" />
                 </div>
                 <div className="md:col-start-7 md:col-end-10 col-span-12">
                     <Calendar disabled text="Fecha" autocomplete="off" name="contact" onChange={handleChange} isLabel label="Contacto" />
@@ -1040,7 +1073,7 @@ const Invoice = () => {
                     </div>
                 </div>
             </div>
-            {IsOpenModalSuccessInvoice && <ModalReponseInvoice handleOpenNewTab={() => handleOpenNewTab("")} closeModal={closeModalResponse} isLoading={isLoading} comprobante={formValues?.comprobante} auth={auth} serie={serie} correlative={correlative} dataReceipt={dataReceipt} client={selectedClient} />}
+            {IsOpenModalSuccessInvoice && <ModalReponseInvoice handleOpenNewTab={() => handleOpenNewTab("")} closeModal={closeModalResponse} isLoading={isLoading} comprobante={formValues?.comprobante} auth={auth} serie={serie} correlative={correlative} dataReceipt={dataReceipt} client={selectedClient} company={auth} productsInvoice={productsInvoice} formValues={formValues} observation={formValues?.observaciones} />}
             {isOpenModalProduct && <ModalProduct setSelectProduct={setSelectProduct} isInvoice initialForm={initialFormProduct} setErrors={setErrorsProduct} setFormValues={setFormValuesProduct} isOpenModal={isOpenModalProduct} errors={errorsProduct} formValues={formValuesProduct} isEdit={false} setIsOpenModal={setIsOpenModalProduct} closeModal={closeModal} />}
             {isOpenModalClient && <ModalClient isOpenModal={isOpenModalClient} errors={errorsClient} setErrors={setErrorsClient} formValues={formValuesClient} setFormValues={setFormValuesClient} isEdit={false} setIsOpenModal={setIsOpenModalClient} closeModal={closeModal} />}
         </div>

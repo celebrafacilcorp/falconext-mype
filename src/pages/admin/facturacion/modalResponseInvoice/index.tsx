@@ -4,6 +4,8 @@ import { IInvoicesState, useInvoiceStore } from "@/zustand/invoices";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import Button from "@/components/Button";
+import { detectPlatform } from "@/utils/platformDetector";
+
 
 
 interface IProps {
@@ -16,9 +18,18 @@ interface IProps {
     isLoading: boolean
     closeModal: any
     handleOpenNewTab: any
+    // Datos adicionales para impresión térmica
+    company?: any
+    productsInvoice?: any[]
+    formValues?: any
+    observation?: string
 }
 
-const ModalReponseInvoice = ({ isLoading, dataReceipt, auth, client, comprobante, closeModal, handleOpenNewTab }: IProps) => {
+const ModalReponseInvoice = ({ isLoading, dataReceipt, auth, client, comprobante, closeModal, handleOpenNewTab, company, productsInvoice, formValues, observation }: IProps) => {
+
+    console.log(company)
+    console.log(productsInvoice)
+    console.log(formValues)
 
     const { resetInvoice, resetProductInvoice }: IInvoicesState = useInvoiceStore();
     const isMobile = useIsMobile();
@@ -74,7 +85,7 @@ const ModalReponseInvoice = ({ isLoading, dataReceipt, auth, client, comprobante
                                     <p className="mt-5 text-[#3E3E3E]">Ha sido generado correctamente</p>
                                 </div>
                             </div>
-                            <div className="flex gap-6 mt-5 mb-2 justify-between">
+                            <div className="flex gap-3 mt-5 mb-2 justify-between flex-wrap">
                                 <Button color="black" outline onClick={goListInvoice}>Ir a lista de comprobantes</Button>
                                 <Button color="primary" outline onClick={handleOpenNewTab}>Imprimir comprobante</Button>
                                 <Button color="secondary" outline onClick={() => closeModal()}>Nueva {comprobante.toLowerCase()}</Button>

@@ -222,9 +222,15 @@ export const useInvoiceStore = create<IInvoicesState>()(devtools((set, _get) => 
             const resp: any = await get(`comprobante/${id}`);
             console.log(resp);
             if (resp.code === 1) {
+                const data = resp.data || {};
+                const vendedorNombre = data?.usuario?.nombre || undefined;
+
                 set(
                     (_state) => ({
-                        invoice: resp.data
+                        invoice: {
+                            ...data,
+                            vendedor: vendedorNombre,
+                        },
                     }),
                     false,
                     'GET_INVOICE'

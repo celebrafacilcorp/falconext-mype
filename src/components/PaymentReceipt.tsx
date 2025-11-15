@@ -254,7 +254,7 @@ const PaymentReceipt = ({
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Button onClick={onClose} color="secondary" className="flex-1">
               Cerrar
             </Button>
@@ -262,6 +262,7 @@ const PaymentReceipt = ({
               <Icon icon="mingcute:print-line" width="18" height="18" className="inline mr-2" />
               Imprimir
             </Button>
+            {/* Botón de impresión térmica (solo se muestra en macOS) */}
           </div>
         </div>
       </div>
