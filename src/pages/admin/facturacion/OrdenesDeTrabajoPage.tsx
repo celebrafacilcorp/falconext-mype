@@ -218,7 +218,7 @@ const OrdenesDeTrabajoPage = () => {
   useEffect(() => {
     switch (printSize) {
       case 'TICKET':
-        setDimensions({ width: 80, height: 297 });
+        setDimensions({ width: 80, height:300 });
         break;
       case 'A5':
         setDimensions({ width: 148, height: 210 });

@@ -390,7 +390,7 @@ const Comprobantes = () => {
         console.log("hello")
         setDimensions(() => {
             switch (printSize) {
-                case 'TICKET': return { width: 80, height: 297 };
+                case 'TICKET': return { width: 80, height: 310 };
                 case 'A5': return { width: 148, height: 210 };
                 case 'A4': return { width: 210, height: 297 };
                 default: return { width: 210, height: 297 };
