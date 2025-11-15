@@ -176,11 +176,11 @@ export default function AdminLayout() {
                   )}
 
                   {/* Pagos - visible si tiene permiso 'pagos' */}
-              {hasPermission(auth, 'pagos') && (
-                <NavLink onClick={() => { setIsSidebarOpen(false); setNameNavbar('Pagos') }} to="/administrador/pagos" className={({ isActive }) => isActive ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d]'}>
-                  <Icon icon="hugeicons:money-bag-01" className="mr-2" width="24" height="24" /> Gestión de Pagos
-                </NavLink>
-              )}
+                  {hasPermission(auth, 'pagos') && (
+                    <NavLink onClick={() => { setIsSidebarOpen(false); setNameNavbar('Pagos') }} to="/administrador/pagos" className={({ isActive }) => isActive ? 'flex bg-[#6A6CFF] px-4 py-2 text-[16px] text-white rounded-xl' : 'flex px-4 py-2 rounded-xl text-[#4d4d4d]'}>
+                      <Icon icon="hugeicons:money-bag-01" className="mr-2" width="24" height="24" /> Gestión de Pagos
+                    </NavLink>
+                  )}
                 </>
               )}
               {/* Reportes/Contabilidad */}
@@ -275,15 +275,25 @@ export default function AdminLayout() {
             {(auth?.rol === 'ADMIN_EMPRESA' || auth?.rol === 'USUARIO_EMPRESA') && (
               <NotificacionesCampana />
             )}
-            
+
             <div className="mr-2 hidden md:block">
-              <img width={30} height={30} src={auth?.empresa?.logo || 'https://icons.veryicon.com/png/o/miscellaneous/two-color-icon-library/user-286.png'} alt="" />
+              <img
+                width={40}
+                height={40}
+                className='border border-[#afafb0] rounded-full'
+                src={
+                  auth?.empresa?.logo
+                    ? `data:image/png;base64,${auth.empresa.logo}`
+                    : 'https://icons.veryicon.com/png/o/miscellaneous/two-color-icon-library/user-286.png'
+                }
+                alt=""
+              />
             </div>
             <div>
               <label className="hidden md:block font-medium">{auth?.nombre}</label>
               <p className="text-[12px]">{auth?.empresa?.nombreComercial}</p>
             </div>
-            
+
           </div>
         </div>
         <div className="bg-[#F3F4F6]">
